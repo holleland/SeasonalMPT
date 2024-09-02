@@ -12,3 +12,5 @@ R/case3_by_area_of_residence.R
 R/case3_Oslo_tourism.R
 figures/
 *.Rproj
+.versions/
+R/Scripts/

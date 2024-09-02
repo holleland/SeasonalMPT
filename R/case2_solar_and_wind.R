@@ -56,18 +56,59 @@ power <- power %>%
   filter(year(date) %in% 2005:2019) %>% 
   mutate(locID = factor(locID, levels = c(1:20, "WP portfolio","Solar PV")))
 
-fitted_seasons <- power %>% 
-  model(TSLM(CF ~ fourier(K = 3, period = "year"))) %>% 
-  fitted() %>% 
+
+# Estimate matrices :
+Amat <- (WP <- power %>% as_tibble() %>% 
+           filter(locID %in% c("WP portfolio","Solar PV")) %>% 
+           pivot_wider(names_from = locID, values_from = CF)) %>% 
+  forecast::msts(seasonal.periods = 365.25) %>%
+  forecast::fourier(K = 3)
+Y <- WP %>% select(-date) %>% as.matrix()
+ffit <- lm(Y~ 1 + Amat)
+Y2 <- Y
+Y2[which(Y2==0, arr.ind=T)] <- 0.001
+Y2[which(Y2==1, arr.ind=T)] <- 0.999
+Ytrans <- log(Y2/(1-Y2))
+ffit2 <- lm(Ytrans~ 1 + Amat)
+
+A <- t(coef(ffit)[-1, ])
+
+A <- A[,c(seq(2,ncol(A),2),seq(1,ncol(A)-1,2))]
+
+SigS <- nrow(WP)/(nrow(WP)-1) * A%*%t(A)/2
+SigZ <- cov(residuals(ffit))
+Sig  <- cov(Y)
+
+cov2cor(SigS)
+cov2cor(SigZ)
+cov2cor(Sig)
+# store fitted values for purpose of plotting:
+
+
+
+.fitted <- fitted(ffit)
+fitted.df <- left_join(reshape2::melt(Y) %>% rename("CF"=value), 
+                       reshape2::melt(.fitted) %>% 
+                         rename(fitted = value)) %>% 
+  mutate(date = WP$date[Var1]) %>% 
+  rename(locID= Var2) %>% 
+  select(-Var1) %>% 
+  as_tibble()
+
+
+
+
+#fitted_seasons <- #power %>% 
+  #model(TSLM(CF ~ fourier(K = 3, period = "year"))) %>% 
+  #fitted() %>% 
+  #filter(year(date) %in% 2014:2016) %>% 
+  #select(-.model)  
+fig1 <- fitted.df %>% 
   filter(year(date) %in% 2014:2016) %>% 
-  select(-.model)  
-fig1 <- ggplot(data = fitted_seasons %>% filter(locID %in% 1:20), aes(x =date, y = .fitted, group = locID)) + 
-  geom_line(color = "grey", alpha = .5) +
-  geom_line(data=fitted_seasons%>% filter(!(locID %in% 1:20)), aes(x =date, y = .fitted, color = locID),
+  ggplot(aes(x =date, y = fitted, color = locID),
             lwd = .9)+
-  geom_point(data=power %>% filter(!(locID %in% 1:20),
-                                   year(date) %in% 2014:2016),
-             aes(x= date, y = CF, color = locID), size = .2)+
+  geom_line()+
+  geom_point(aes(x= date, y = CF, color = locID), size = .2)+
   scale_y_continuous(name = "Capacity factor", limits =c(-0.01,1.01), expand = c(0,0))+
   scale_x_date(expand = c(0,0), limits = c(as.Date("2013-12-16"),as.Date("2016-12-31")), 
                name = "") +
@@ -84,26 +125,16 @@ empcov <- wppPV %>%
   as_tibble() %>% 
   pivot_wider(names_from = locID, values_from = CF) %>% select(-1) %>%
   cov()
-empcor <- wppPV %>% 
-  as_tibble() %>% 
-  pivot_wider(names_from = locID, values_from = CF) %>% select(-1) %>%
+empcor <- Y %>% 
   cor()
-season_parameters <- wppPV %>%   
-  model(TSLM(CF ~ fourier(K = 3, period = "year"))) %>% 
-  coef() %>%select(locID, term, estimate) %>% 
-  pivot_wider(names_from = term, values_from = estimate)
-names(season_parameters)[-1] <- c("intercept", paste0(c("a","b"), rep(1:((ncol(season_parameters)-2)/2), each = 2)))
-season_cov <- season_parameters[,-(1:2)] %>% as.matrix() %*%t(season_parameters[,-(1:2)] %>% as.matrix()) /2
-colnames(season_cov)<-rownames(season_cov)<-season_parameters$locID
-season_cov <- season_cov[2:1,2:1]
 
-diag(1/sqrt(diag(season_cov)))%*%season_cov%*%diag(1/sqrt(diag(season_cov)))
-diag(1/sqrt(diag(empcov)))%*%empcov%*%diag(1/sqrt(diag(empcov)))
-diag(1/sqrt(diag(empcov-season_cov)))%*%(empcov-season_cov)%*%diag(1/sqrt(diag(empcov-season_cov)))
+diag(1/sqrt(diag(SigS)))%*%SigS%*%diag(1/sqrt(diag(SigS)))
+diag(1/sqrt(diag(Sig)))%*%Sig%*%diag(1/sqrt(diag(Sig)))
+diag(1/sqrt(diag(Sig-SigS)))%*%(Sig-SigS)%*%diag(1/sqrt(diag(Sig-SigS)))
+diag(1/sqrt(diag(SigZ)))%*%SigZ%*%diag(1/sqrt(diag(SigZ)))
 
 
-
-mu <- season_parameters %>%  arrange(desc(locID)) %>% pull(intercept)
+mu <- coef(ffit)[1,]
 
 MPT <- function(mu, cov, target, return_value = TRUE){
   Amat <- cbind(1, mu, diag(length(mu)))
@@ -118,25 +149,25 @@ MPT <- function(mu, cov, target, return_value = TRUE){
 }
 targets <- seq(min(mu)+0.01, max(mu)-0.01, by = 0.01)
 emp <- sapply(targets,
-              MPT, cov = empcov, mu = mu)
+              MPT, cov = Sig, mu = mu)
 season <- sapply(targets,
-              MPT, cov = season_cov, mu = mu)
+              MPT, cov = SigS, mu = mu)
 seasonadjusted <- sapply(targets,
-                 MPT, cov = empcov - season_cov, mu = mu)
+                 MPT, cov = SigZ, mu = mu)
 ports_by_cov <- tibble(
   targets = targets, 
-  "Empirical" = emp, 
+  "Naive" = emp, 
   "Seasonal" = season,
   "Season-adj." = seasonadjusted
 ) %>% 
   pivot_longer(cols = 2:4) %>% 
-  mutate(name = factor(name, levels = c("Empirical", "Seasonal", "Season-adj.")))
+  mutate(name = factor(name, levels = c("Naive", "Seasonal", "Season-adj.")))
   
 fig2 <- ports_by_cov %>% 
   ggplot(aes(x = value, y = targets, color = name, group = name)) + 
   geom_path() + 
-  scale_x_continuous("Variance measure")+
-  scale_y_continuous("Portfolio capacity factor")+
+  scale_x_continuous("Risk")+
+  scale_y_continuous(latex2exp::TeX("Portfolio capacity factor ($\\mu^*$)"))+
   geom_segment(data = ports_by_cov %>% group_by(name) %>% 
                filter(value == min(value)),
                aes(x = -Inf, xend = value, y = targets, yend= targets, color = name),
@@ -145,21 +176,21 @@ fig2 <- ports_by_cov %>%
   theme(plot.background = element_rect(fill = "transparent"),
         panel.background = element_rect(fill = "transparent"),
         legend.title = element_blank(), 
-        legend.position = c(.7,.15),
+        legend.position = c(.65,.15),
         legend.text  = element_text(size = 12),
         legend.background = element_rect(fill = "transparent", color = "transparent"))
 ggsave(fig2, file = "figures/case2_efficient_frontiers.png", width = 8, height = 4)
 
 targets[c(which.min(emp), which.min(season), which.min(seasonadjusted))]
 weights <- (MPTsummary <- rbind(
-  "Empirical" = MPT(mu,empcov, target = targets[which.min(emp)], return_value = FALSE),
-  "Seasonal" = MPT(mu,season_cov, target = targets[which.min(season)], return_value = FALSE),
-  "Season-adjusted" = MPT(mu,empcov-season_cov, target = targets[which.min(seasonadjusted)], return_value = FALSE)) %>% 
+  "Naive" = MPT(mu,Sig, target = targets[which.min(emp)], return_value = FALSE),
+  "Seasonal" = MPT(mu,SigS, target = targets[which.min(season)], return_value = FALSE),
+  "Season-adjusted" = MPT(mu,SigZ, target = targets[which.min(seasonadjusted)], return_value = FALSE)) %>% 
   
   as.data.frame() %>% 
   rownames_to_column("covariance") %>% 
   as_tibble() %>% 
-  mutate(covariance = factor(covariance, levels = c("Empirical", "Seasonal", "Season-adjusted")))) %>% 
+  mutate(covariance = factor(covariance, levels = c("Naive", "Seasonal", "Season-adjusted")))) %>% 
   rename("Solar PV" = "weights1", 
          "WP portfolio" = "weights2") %>% 
   select(-c(2:3)) %>% 
@@ -171,7 +202,7 @@ portfolios_ts <- wppPV %>% as_tibble() %>% left_join(weights, by = "locID", rela
   summarize(totalCF = sum(weights*CF)) %>% 
   as_tsibble(key = covariance, index = date) %>% 
   
-  mutate(covariance = factor(covariance, levels = c("Empirical", "Seasonal", "Season-adjusted")))
+  mutate(covariance = factor(covariance, levels = c("Naive", "Seasonal", "Season-adjusted")))
 
 
 
@@ -179,9 +210,9 @@ SD <- function(w, sigma){
   w <- c(w,1-w)
   return(sqrt(t(w)%*%sigma%*%w))
 }
-SRS <- function(w, season, sigma){
+SRS <- function(w, season, sigmaZ){
   w <- c(w,1-w)
-  return(sqrt(t(w)%*%season%*%w / t(w)%*%sigma%*%w))
+  return(sqrt(t(w)%*%season%*%w / t(w)%*%(season+sigmaZ)%*%w))
 }
 
 (timeplot <- portfolios_ts %>% 
@@ -192,8 +223,8 @@ SRS <- function(w, season, sigma){
   geom_text(data= weights %>% filter(locID == "Solar PV"),
             aes(x = as.Date("2017-01-01"), y = Inf, 
                 label = paste0("Solar weight: ", round(100*weights,1),"%    ",
-                "SRS: ",round(sapply(weights,SRS, season= season_cov,sigma= empcov),3),
-                "    SD: ", round(sapply(weights, SD, sigma = empcov),3))),
+                "SRS: ",round(sapply(weights,SRS, season= SigS,sigmaZ= SigZ),3),
+                "    SD: ", round(sapply(weights, SD, sigma = Sig),3))),
             vjust = 1.5, hjust=.5)+
   scale_x_date(expand = c(0,0), date_breaks = "1 year", date_labels = "%Y")+
   scale_y_continuous(name = "Portfolio capacity factor", limits = c(0.09,.58), breaks = seq(.1,.6,.1))+
@@ -213,7 +244,7 @@ ggsave(fig3, file = "figures/case2_Time_ACF_combined.png", width = 10, height = 
 
 SRSfig <- tibble(
   w = seq(0,1,0.01),
-  SRS = sapply(w, SRS, season = season_cov, sigma = empcov)
+  SRS = sapply(w, SRS, season = SigS, sigmaZ = SigZ)
 ) %>% 
   ggplot(aes(x=w, y = SRS)) + geom_path()+
   geom_vline(data = weights %>% filter(locID == "Solar PV"),
@@ -223,8 +254,8 @@ SRSfig <- tibble(
              show.legend = FALSE, hjust=-0.01)+
   geom_segment(data = weights %>% filter(locID == "Solar PV"),
                aes(x=-Inf, xend = weights, 
-                   y = sapply(weights,SRS, season= season_cov,sigma= empcov), 
-                   yend = sapply(weights,SRS, season= season_cov,sigma= empcov),
+                   y = sapply(weights,SRS, season= SigS,sigmaZ= SigZ), 
+                   yend = sapply(weights,SRS, season= SigS,sigmaZ= SigZ),
                    color = covariance), lty = 2)+
   scale_x_continuous(expand = c(0,0), name = "Solar PV weight",
                      breaks= seq(0,1,.25),
@@ -233,10 +264,78 @@ SRSfig <- tibble(
                      limits = c(0,.75))+
   theme(legend.position = "none",
         plot.background = element_rect(fill = "transparent"))
-ggsave("figures/case2_SRS.png", width = 8, height = 6)
+ggsave(SRSfig, file = "figures/case2_SRS.png", width = 8, height = 6)
+
+# tst <- function(w,sig) sqrt(t(c(w,1-w))%*%sig%*%c(w,1-w))
+# 
+# tibble(
+#   w = seq(0,1,0.01),
+#   SRS = sapply(w, tst, sig = SigS),
+#   SRSz = sapply(w, tst, sig = SigZ)
+# ) %>% 
+#   ggplot(aes(x=w)) + 
+#   geom_line(aes(y = SRS), col = "red")+
+#   geom_line(aes(y = SRSz), col = "blue")+
+#   geom_vline(data = weights %>% filter(locID == "Solar PV"),
+#              aes(xintercept=weights, color = covariance), lty = 2)
+#   
+
 
 
 library(ggpubr)
 case2<-ggarrange(ggarrange(fig1,SRSfig,fig2,ncol = 3, labels = c("A","B","C")),
           fig3, ncol = 1, heights = c(1,2))
 ggsave(case2, file = "figures/case2_combined.pdf", width = 8, height = 10)
+
+
+par(mfrow=c(1,2))
+qqnorm(ffit$residuals[,1], main = "Solar PV")
+qqline(ffit$residuals[,1], col = 2)
+qqnorm(ffit$residuals[,2], main = "Wind portfolio")
+qqline(ffit$residuals[,2], col = 2)
+
+resid <- ffit$residuals
+sfig1 <- resid %>% reshape2::melt() %>% 
+  group_by(Var2) %>% 
+  mutate(standardized = (value-mean(value))/sd(value)) %>% 
+  ggplot(aes(sample=standardized)) +
+  stat_qq() + 
+  stat_qq_line()+
+  facet_wrap(~Var2)+
+  xlab("Theoretical quantiles")+
+  ylab("Residual quantiles")
+ggsave("figures/case2_appendix_qqplots_per_energysource.png", width = 8, height = 4)
+#resid <- ffit2$residuals
+# resid %>% reshape2::melt() %>% 
+#   group_by(Var2) %>% 
+#   mutate(standardized = (value-mean(value))/sd(value)) %>% 
+#   ggplot(aes(sample=standardized)) +
+#   stat_qq() + 
+#   stat_qq_line()+
+#   facet_wrap(~Var2)+
+#   xlab("Theoretical quantiles")+
+#   ylab("Residual quantiles")
+# ggsave("figures/case2_appendix_qqplots_per_energysource_transformed.png", width = 8, height = 4)
+
+sfig2 <- resid %>% reshape2::melt() %>% 
+  group_by(Var2) %>% 
+  mutate(standardized = (value-mean(value))/sd(value)) %>% 
+  ggplot(aes(x=standardized)) +
+  stat_density(fill = "skyblue")+
+  geom_function(fun = dnorm, col = 2, lwd = 1.2)+
+  facet_wrap(~Var2)+
+  xlab("Standardized residuals")+
+  ylab("Density")
+  
+sfig3 <- resid %>% reshape2::melt() %>% 
+  as_tsibble(key = Var2, index = Var1) %>% 
+  ACF(value, lag_max = 400) %>% 
+  autoplot() +
+  scale_x_cf_lag(breaks = seq(0, 400, 100), limits = c(0,400), expand = c(0,0))+
+  scale_y_continuous(name = "Autocorrelation")+
+  theme(axis.title.x = element_blank())+
+  facet_wrap(~Var2, ncol = 5)+
+  xlab("lag")
+ggpubr::ggarrange(sfig1,sfig2,sfig3, ncol = 1,
+                  labels = c("A","B","C"))
+ggsave("figures/case2_appendix_residuals.png", width = 8, height = 8)
