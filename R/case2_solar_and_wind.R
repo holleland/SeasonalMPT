@@ -104,20 +104,42 @@ fitted.df <- left_join(reshape2::melt(Y) %>% rename("CF"=value),
   #filter(year(date) %in% 2014:2016) %>% 
   #select(-.model)  
 fig1 <- fitted.df %>% 
-  filter(year(date) %in% 2014:2016) %>% 
-  ggplot(aes(x =date, y = fitted, color = locID),
-            lwd = .9)+
-  geom_line()+
-  geom_point(aes(x= date, y = CF, color = locID), size = .2)+
+  #filter(year(date) %in% 2014:2016) %>% 
+  ggplot(aes(x =date, y = fitted, color = locID))+
+  geom_line(lwd = .7)+
+  geom_point(aes(x= date, y = CF, color = locID), size = .2, show.legend = FALSE)+
   scale_y_continuous(name = "Capacity factor", limits =c(-0.01,1.01), expand = c(0,0))+
-  scale_x_date(expand = c(0,0), limits = c(as.Date("2013-12-16"),as.Date("2016-12-31")), 
+  scale_x_date(expand = c(0,0), limits = c(as.Date("2004-12-16"),as.Date("2019-12-31")),
+               date_breaks = "1 year",
+               date_labels = "%Y",
                name = "") +
-  scale_color_manual(values = c("blue", "red"))+
+  scale_color_manual(values = c("red", "blue"))+
+  guides(color = guide_legend(override.aes = list(size = 2, lwd =5)))+
   theme(legend.title = element_blank(), 
         legend.position = "bottom",
         legend.margin=margin(-20, 0, 0, 0),
         legend.background = element_rect(fill = "transparent", color = "transparent"))
-ggsave(fig1, file = "figures/case2_wind_solar_time_plot_season.png", width = 8, height = 4)
+fig1
+ggsave(fig1, file = "figures/case2_wind_solar_time_plot_season.pdf", width = 6, height = 3)
+
+
+fig1 <- fitted.df %>% 
+  filter(year(date) %in% 2014:2016) %>% 
+  ggplot(aes(x =date, y = fitted, color = locID),
+            lwd = 1.1)+
+  geom_line()+
+  geom_point(aes(x= date, y = CF, color = locID), size = .2, show.legend = FALSE)+
+  scale_y_continuous(name = "Capacity factor", limits =c(-0.01,1.01), expand = c(0,0))+
+  scale_x_date(expand = c(0,0), limits = c(as.Date("2004-12-16"),as.Date("2019-12-31")),
+               name = "") +
+  scale_color_manual(values = c("blue", "red"))+
+  guides(color = guide_legend(override.aes = list(size = 2, lwd =5)))+
+  theme(legend.title = element_blank(), 
+        legend.position = "bottom",
+        legend.margin=margin(-20, 0, 0, 0),
+        legend.background = element_rect(fill = "transparent", color = "transparent"))
+fig1
+# ggsave(fig1, file = "figures/case2_wind_solar_time_plot_season.png", width = 8, height = 4)
 
 wppPV <- power %>% 
   filter(!(locID %in% 1:20))
@@ -238,7 +260,7 @@ acfplot <- portfolios_ts %>%
   scale_y_continuous(name = "Autocorrelation")
 fig3 <- ggpubr::ggarrange(timeplot+ theme(strip.text =element_blank()),
                   acfplot+ theme(axis.title.x = element_blank()),
-                  labels = c("D","E"))
+                  labels = c("C","D"))
 ggsave(fig3, file = "figures/case2_Time_ACF_combined.png", width = 10, height = 8)
 
 
@@ -283,7 +305,7 @@ ggsave(SRSfig, file = "figures/case2_SRS.png", width = 8, height = 6)
 
 
 library(ggpubr)
-case2<-ggarrange(ggarrange(fig1,SRSfig,fig2,ncol = 3, labels = c("A","B","C")),
+case2<-ggarrange(ggarrange(SRSfig,fig2,ncol = 2, labels = c("A","B")),
           fig3, ncol = 1, heights = c(1,2))
 ggsave(case2, file = "figures/case2_combined.pdf", width = 8, height = 10)
 
