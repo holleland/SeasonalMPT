@@ -24,10 +24,10 @@ theme_set(theme_bw()+
     w <- c(w,1-w)
     return((t(w)%*%season%*%w / t(w)%*%(season+sigmaZ)%*%w))
   }
-  # Solar data: 
-  solar_files <- list.files("data/solar/", full.names = TRUE)
-  PV <- tibble()
-  for(file in solar_files){
+# Solar data: 
+solar_files <- list.files("data/solar/", full.names = TRUE)
+PV <- tibble()
+for(file in solar_files){
     PV <- 
       bind_rows(PV,
                 read_csv(file, skip = 10) %>% 
@@ -36,24 +36,17 @@ theme_set(theme_bw()+
       select(datetime, locID, CF)%>% 
       filter(year(datetime) %in% 2005:2019) %>% 
       mutate(file = file))
-  }
-  #PV <- apply(solar_files, read_csv, skip = 10)
-  # PV <- read_csv("data/Timeseries_60.423_5.302_E5_1kWp_crystSi_14_47deg_6deg_2005_2020.csv",
-  #                 skip = 10) %>% 
-  #   mutate(datetime = as.POSIXct(time, format = "%Y%m%d:%H%M")) %>% 
-  #   mutate(CF = P/1000, locID = "Solar PV") %>% # CF = percentage of 1 kW
-  #   select(datetime, locID, CF)%>% 
-  #   filter(year(datetime) %in% 2005:2019)
-  PV %>% group_by(file) %>% summarize(mean(CF))
+}
+PV %>% group_by(file) %>% summarize(mean(CF))
   
-  PV <- PV %>%  
+PV <- PV %>%  
     group_by(datetime, locID) %>% 
     summarize(CF = mean(CF, na.rm=T))
   
-  #   
+
   
-  # NVE data and portfolio
-  wind <-   readRDS("data/NVE.rds") %>%
+# NVE data and portfolio
+wind <-   readRDS("data/NVE.rds") %>%
                         select(locID,value, datetime)%>% 
     filter(year(datetime) %in% 2005:2019)
   
@@ -312,15 +305,8 @@ theme_set(theme_bw()+
                        labels = scales::percent,
                        breaks = c(seq(0,1,.25), 1-more_than_30gw$mix[c(1,3)]),
                        limits = c(-0.01,1.0), expand = c(0,0))+
-    #facet_wrap( ~facet, ncol = 1, strip.position = "left")+
     geom_segment(aes(x = p_target,xend = p_target, y = -Inf, yend = 1-mix, color = strategy) , data = more_than_30gw, lty = 2, show.legend = FALSE)+
     geom_segment(aes(x = -Inf,xend = p_target, y = 1-mix, yend = 1-mix, color = strategy) , data = more_than_30gw, lty = 2, show.legend = FALSE)+
-    # geom_vline(data = more_than_30gw %>% 
-    #              mutate(facet = factor("SRS", levels = c("Solar PV proportion", "SRS"))),
-    #            aes(xintercept = p_target, color = strategy), lty = 2, show.legend = FALSE)+
-    # geom_point(aes(x = p_target, y = mix), 
-    #            data = more_than_30gw, show.legend = FALSE, color = "black",
-    #            shape = "x", size = 3)+
     theme(legend.position = "top",
           legend.title = element_blank(),
           legend.margin = margin(0, 0, 0, 0),
@@ -349,7 +335,6 @@ theme_set(theme_bw()+
     left_join(daily_consumption) %>% 
     mutate("Net-balance" = Production-Consumption) %>% 
     pivot_longer(cols = 3:5) %>% 
-    #filter(year(date) == 2019) %>% 
     mutate(yday = date-years(year(date))) %>% 
     group_by(yday, strategy, name) %>% 
     summarize(value = mean(value, na.rm=T)) %>% 
@@ -368,7 +353,6 @@ theme_set(theme_bw()+
     facet_grid(name == "Average Net-balance"~strategy, scales = "free_y")+
     scale_x_date(date_labels = "%b", expand = c(0,0))+
     scale_y_continuous("Power (GWh)")+
-    #scale_color_manual(values = c("red","blue","darkgreen"))
     theme(strip.text.y = element_blank(),
           legend.title = element_blank(),
           legend.position =  "top",

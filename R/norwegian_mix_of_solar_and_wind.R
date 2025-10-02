@@ -28,22 +28,14 @@ for(file in solar_files){
                 filter(year(datetime) %in% 2005:2019) %>% 
                 mutate(file = file))
 }
-#PV <- apply(solar_files, read_csv, skip = 10)
-# PV <- read_csv("data/Timeseries_60.423_5.302_E5_1kWp_crystSi_14_47deg_6deg_2005_2020.csv",
-#                 skip = 10) %>% 
-#   mutate(datetime = as.POSIXct(time, format = "%Y%m%d:%H%M")) %>% 
-#   mutate(CF = P/1000, locID = "Solar PV") %>% # CF = percentage of 1 kW
-#   select(datetime, locID, CF)%>% 
-#   filter(year(datetime) %in% 2005:2019)
+
 PV %>% group_by(file) %>% summarize(mean(CF))
 
 PV <- PV %>%  
-  filter(!grepl("Trondheim|Tromso|Bodo", file)) %>% 
   group_by(datetime, locID) %>% 
   summarize(CF = mean(CF, na.rm=T))
 
-#   
-  
+
 
 # NVE data and portfolio
 wind <-   readRDS("data/NVE.rds") %>%
@@ -131,10 +123,10 @@ fitted.df <- left_join(reshape2::melt(Y) %>% rename("CF"=value),
 
 # 
 # 
-# fig1 <- fitted.df %>% 
-#   mutate(locID2 = ifelse(locID == "Wind offshore", "Offshore Wind", "Solar PV")) %>% 
-#   dplyr::select(-locID) %>% 
-#   rename(locID=locID2) %>% 
+# fig1 <- fitted.df %>%
+#   mutate(locID2 = ifelse(locID == "Wind offshore", "Offshore Wind", "Solar PV")) %>%
+#   dplyr::select(-locID) %>%
+#   rename(locID=locID2) %>%
 #   ggplot(aes(x =date, y = fitted, color = locID))+
 #   geom_line(lwd = .7)+
 #   geom_point(aes(x= date, y = CF, color = locID), size = .2, show.legend = FALSE)+
@@ -145,13 +137,13 @@ fitted.df <- left_join(reshape2::melt(Y) %>% rename("CF"=value),
 #                name = "") +
 #   scale_color_manual(values = c( "blue","red"))+
 #   guides(color = guide_legend(override.aes = list(size = 2, lwd =5)))+
-#   theme(legend.title = element_blank(), 
+#   theme(legend.title = element_blank(),
 #         legend.position = "bottom",
 #         legend.margin=margin(-20, 0, 0, 0),
 #         legend.background = element_rect(fill = "transparent", color = "transparent"))
 # fig1
 # ggsave(fig1, file = "figures/case2_wind_solar_time_plot_season.pdf", width = 6, height = 3)
-
+# 
 
 
 wppPV <- power %>% 
@@ -268,11 +260,7 @@ SRS <- function(w, season, sigmaZ){
         legend.position = "none")+
   geom_hline(data=MPTsummary, aes(yintercept = mean), lty = 2, col = "black"))
 
-# acfplot <- portfolios_ts %>% 
-#   ACF(totalCF, lag_max = 400) %>%
-#   autoplot(color = covariance)  +
-#   scale_x_cf_lag(breaks = seq(0, 400, 30), limits = c(0,401), expand = c(0,0))+
-#   scale_y_continuous(name = "Autocorrelation")
+
 
 acf_data <- portfolios_ts %>% 
   ACF(totalCF, lag_max = 400) %>% 
@@ -280,10 +268,8 @@ acf_data <- portfolios_ts %>%
 
 conf_level <- 0.05
 conf_bound <- qnorm(1 - conf_level / 2) / sqrt(nrow(portfolios_ts))
-# Plot using ggplot2
 acfplot <- ggplot(acf_data, aes(x = lag, y = acf, fill = covariance)) +
   geom_col(width = 1) +
-  #scale_fill_manual(values = c("positive" = "blue", "negative" = "red")) +
   scale_x_continuous(breaks = seq(0, 400, 30), limits = c(0, 401), expand = c(0, 0)) +
   scale_y_continuous(name = "Autocorrelation") +
   facet_wrap(~covariance, ncol = 1, strip.position = "right")+
@@ -358,17 +344,6 @@ sfig1 <- resid %>% reshape2::melt() %>%
   ylab("Residual quantiles")+
   theme(strip.placement = "outside")
 ggsave("figures/case2_appendix_qqplots_per_energysource.png", width = 8, height = 4)
-#resid <- ffit2$residuals
-# resid %>% reshape2::melt() %>% 
-#   group_by(Var2) %>% 
-#   mutate(standardized = (value-mean(value))/sd(value)) %>% 
-#   ggplot(aes(sample=standardized)) +
-#   stat_qq() + 
-#   stat_qq_line()+
-#   facet_wrap(~Var2)+
-#   xlab("Theoretical quantiles")+
-#   ylab("Residual quantiles")
-# ggsave("figures/case2_appendix_qqplots_per_energysource_transformed.png", width = 8, height = 4)
 
 sfig2 <- resid %>% reshape2::melt() %>% 
   mutate(Var3 = ifelse(Var2 == "Wind offshore", "Offshore Wind", "Solar PV")) %>% 
@@ -553,7 +528,6 @@ tibble(k=1:nrow(pow)) %>%
   group_by(name) %>% 
   mutate(cumsum = cumsum(value)/sum(value)) %>% 
   ggplot(aes(x=k, y=cumsum, color = name)) +
-  #geom_line()+
   geom_point() + geom_line(show.legend=FALSE)+
   geom_hline(yintercept=0.99, color = "steelblue", linewidth = .7,lty=1)+
   geom_vline(xintercept = 4, lty = 2, color = "steelblue")+
