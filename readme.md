@@ -22,9 +22,10 @@ with the simplest two-assets case (see folder
 ### Reproducing results
 
 To reproduce the Norwegian Energy Mix application with and without
-taking into account demand, run the scripts in the R folder,
-i.e. **R/norwegian_mix_of_solar_and_wind.R** and
-**R/norwegian_mix_of_solar_and_wind_with_demand.R**.
+taking into account demand, run the scripts in the [R
+folder](https://github.com/holleland/SeasonalMPT/tree/main/R),
+i.e. *norwegian_mix_of_solar_and_wind.R* and
+*norwegian_mix_of_solar_and_wind_with_demand.R*.
 
 ### Data
 
