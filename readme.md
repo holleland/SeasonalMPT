@@ -1,0 +1,63 @@
+Optimal mixes of renewable energy by seasonal MPT
+================
+
+*Contributors: Sondre Hølleland<sup>†1</sup>, Geir Drage
+Berentsen<sup>1</sup>, Håkon Otneim<sup>1</sup>, Konstantinos Fokianos
+<sup>2</sup>.*
+
+*<sup>†</sup> Responsible for the code.*
+
+<sup>1</sup> *Norwegian School of Economics, Norway.*
+
+<sup>2</sup> *University of Cyprus, Cyprus*
+
+*Correspondance to: <sondre.holleland@nhh.no>*
+
+This github repository contains the necessary code for reproducing the
+analysis performed in the paper *Optimal mixes of renewable energy by
+seasonal MPT*. It also contains a shiny application for experimenting
+with the simplest two-assets case (see folder
+[shiny](https://github.com/holleland/SeasonalMPT/tree/main/shiny)).
+
+### Reproducing results
+
+To reproduce the Norwegian Energy Mix application with and without
+taking into account demand, run the scripts in the R folder,
+i.e. **R/norwegian_mix_of_solar_and_wind.R** and
+**R/norwegian_mix_of_solar_and_wind_with_demand.R**.
+
+### Data
+
+You may find the data points extracted from the NORA3-WP dataset
+(Solbrekke and Sorteberg, 2022) for the NVE locations used by Hølleland
+et al (2025) and the solar PV power data, in the
+[data](https://github.com/holleland/SeasonalMPT/tree/main/data) folder.
+The solar power data is downloaded from [the European Commission’s Joint
+Research Centre
+(JRC)](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/pvgis-tools/hourly-radiation_en),
+and published here in accordance with the JRC’s open data policy (see
+licence below). The full NORA3-WP dataset (Solberg and Sorteberg, 2022)
+is available at the
+[sigma2](https://archive.sigma2.no/pages/public/datasetDetail.jsf?id=10.11582/2021.00068)
+archive.
+
+## Author’s github account
+
+**Sondre Hølleland** - [holleland](https://github.com/holleland)
+
+## License
+
+This project is licensed under [CC BY 4.0 LEGAL
+CODE](https://creativecommons.org/licenses/by/4.0/legalcode), same as
+the solar PV data from the JRC.
+
+## References
+
+- [Solbrekke, I. M., & Sorteberg, A. (2022). NORA3-WP: A high-resolution
+  offshore wind power dataset for the Baltic, North, Norwegian, and
+  Barents Seas. Scientific Data, 9(1),
+  362.](https://www.nature.com/articles/s41597-022-01451-x)
+- [Hølleland, S., Berentsen, G. D., Otneim, H., & Solbrekke, I. M.
+  (2025). Optimal allocation of 30 GW offshore wind power in the
+  Norwegian economic zone. Wind Energy Science, 10(1),
+  293-313.](https://doi.org/10.5194/wes-10-293-2025)

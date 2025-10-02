@@ -4,13 +4,10 @@
 .Ruserdata
 *.png
 output/
-data/
-data/NVE.rds
+data/ikkeBrukt/
 Literature/
-R/solar_pv.R
-R/case3_by_area_of_residence.R
-R/case3_Oslo_tourism.R
+R/Scripts
 figures/
 *.Rproj
 .versions/
-R/Scripts/
+readme.html
