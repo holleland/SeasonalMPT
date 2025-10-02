@@ -1,4 +1,4 @@
-Optimal mixes of renewable energy by seasonal MPT
+Optimal mixes of renewable energy by seasonal modern portfolio theory
 ================
 
 *Contributors: Sondre Hølleland<sup>†1</sup>, Geir Drage
@@ -15,8 +15,8 @@ Berentsen<sup>1</sup>, Håkon Otneim<sup>1</sup>, Konstantinos Fokianos
 
 This github repository contains the necessary code for reproducing the
 analysis performed in the paper *Optimal mixes of renewable energy by
-seasonal MPT*. It also contains a shiny application for experimenting
-with the simplest two-assets case (see folder
+seasonal modern portfolio theory*. It also contains a shiny application
+for experimenting with the simplest two-assets case (see folder
 [shiny](https://github.com/holleland/SeasonalMPT/tree/main/shiny)).
 
 ### Reproducing results

@@ -1,5 +1,5 @@
 ---
-title: "Optimal mixes of renewable energy by seasonal MPT"
+title: "Optimal mixes of renewable energy by seasonal modern portfolio theory"
 output: github_document
 ---
 
@@ -19,7 +19,7 @@ knitr::knit_engines$set()
   *Correspondance to: sondre.holleland@nhh.no*
  
 
-This github repository contains the necessary code for reproducing the analysis performed in the paper *Optimal mixes of renewable energy by seasonal MPT*. It also contains a shiny application for experimenting with the simplest two-assets case (see folder [shiny ](https://github.com/holleland/SeasonalMPT/tree/main/shiny)).
+This github repository contains the necessary code for reproducing the analysis performed in the paper *Optimal mixes of renewable energy by seasonal modern portfolio theory*. It also contains a shiny application for experimenting with the simplest two-assets case (see folder [shiny ](https://github.com/holleland/SeasonalMPT/tree/main/shiny)).
 
 ### Reproducing results
 To reproduce the Norwegian Energy Mix application with and without taking into account demand, run the scripts in the [R folder](https://github.com/holleland/SeasonalMPT/tree/main/R), i.e. *norwegian_mix_of_solar_and_wind.R* and *norwegian_mix_of_solar_and_wind_with_demand.R*. 
