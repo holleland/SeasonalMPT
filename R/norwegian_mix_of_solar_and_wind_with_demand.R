@@ -106,14 +106,37 @@ wind <-   readRDS("data/NVE.rds") %>%
   power %>%  ggplot(aes(x=date, y = Consumption)) + geom_line()+
     geom_smooth(method = "lm")
   
+  
+  
   # Detreding consumption
   detrend <- power %>% 
     mutate(t = 1:n())
   con.lm <- lm(Consumption ~ t, data = detrend)
   power$Consumption <- power$Consumption + coef(con.lm)[2]*nrow(power)- coef(con.lm)[2]*(1:nrow(power))
-  
-  # Fixed at 2020 level.
-  
+
+  power %>% 
+    mutate("Solar PV" = `Solar PV`*1e6/(2000*24*size_of_solar_park),
+           "WP portfolio"=`WP portfolio`*1e6/(15e6*24),
+           Consumption = Consumption/1e3) %>% 
+    ungroup() %>% 
+    pivot_longer(cols = 2:4) %>% 
+    group_by(name) %>% 
+    summarize(
+      n        = n(),
+      Mean     = mean(value, na.rm = TRUE),
+      SD       = sd(value, na.rm = TRUE),
+      Min      = min(value, na.rm = TRUE),
+      Max      = max(value, na.rm = TRUE),
+      Skewness = moments::skewness(value, na.rm = TRUE),
+      Kurtosis = moments::kurtosis(value, na.rm = TRUE)
+      
+    ) %>% 
+    mutate(across(where(is.numeric) & !matches("^n$"), ~ signif(.x, 3))) %>% 
+    knitr::kable(
+      format = "latex",
+      booktabs = TRUE,
+      caption = "Descriptive statistics of power variables"
+    )
   # Estimate matrices :
   Amat <- power %>% as_tibble() %>% 
     forecast::msts(seasonal.periods = 365.25) %>%

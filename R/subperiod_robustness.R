@@ -73,6 +73,11 @@ Amat <- (WP <- power %>% as_tibble() %>%
            pivot_wider(names_from = locID, values_from = CF)) %>% 
   forecast::msts(seasonal.periods = 365.25) %>%
   forecast::fourier(K = 4)
+y_run <-  (2005:2019)[1:7] # first 7 years
+y_run <-  (2006:2019)[8:14] # second 7 years
+years <- WP %>%  mutate(year =year(date)) %>% pull(year)
+Amat <- Amat[which(years %in% y_run),]
+WP <- WP %>% filter(year(date)%in% y_run)
 Y <- WP %>% select(-date) %>% as.matrix()
 
 # Selecting K = 4
@@ -101,6 +106,79 @@ A <- A[,c(seq(2,ncol(A),2),seq(1,ncol(A)-1,2))]
 SigS <- nrow(WP)/(nrow(WP)-1) * A%*%t(A)/2
 SigZ <- cov(residuals(ffit))
 Sig  <- cov(Y)
+
+# SAVE matrices
+matrises <- list()
+matrises$SigS <- SigS
+matrises$SigZ <- SigZ
+matrises$Sig <- Sig
+# covmats <- list(
+#   "first" = matrises
+# )
+covmats$second = matrises
+
+covmats
+
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+
+fmt <- function(x, digits = 4) formatC(x, format = "f", digits = digits)
+
+make_one_big_table <- function(covmats, digits = 4,
+                               split_names = c("First period", "Second period"),
+                               caption = NULL, label = NULL) {
+  
+  build_block <- function(which) {
+    A <- covmats$first[[which]]
+    B <- covmats$second[[which]]
+    rn <- rownames(A); cn <- colnames(A)
+    
+    expand.grid(Row = rn, Col = cn, stringsAsFactors = FALSE) |>
+      as_tibble() |>
+      mutate(
+        Matrix = which,
+        Entry  = paste0(Row, " vs ", Col),
+        !!split_names[1] := fmt(mapply(function(r, c) A[r, c], Row, Col), digits),
+        !!split_names[2] := fmt(mapply(function(r, c) B[r, c], Row, Col), digits)
+      ) |>
+      select(Matrix, Entry, all_of(split_names))
+  }
+  
+  df <- bind_rows(build_block("SigS"), build_block("SigZ"), build_block("Sig"))
+  
+  tab <- df |>
+    kable(
+      format = "latex",
+      booktabs = TRUE,
+      caption = caption,
+      label = label,
+      align = c("l", "l", "r", "r"),
+      escape = TRUE
+    ) |>
+    kable_styling(latex_options = c("hold_position"), font_size = 10) |>
+    add_header_above(c(" " = 2, "Estimated covariance" = 2))
+  
+  # add panel separators
+  idx <- split(seq_len(nrow(df)), df$Matrix)
+  for (m in names(idx)) {
+    tab <- tab |>
+      group_rows(paste0("Matrix: ", m), min(idx[[m]]), max(idx[[m]]), bold = TRUE)
+  }
+  
+  tab
+}
+
+tbl_all <- make_one_big_table(
+  covmats,
+  caption = "Sensitivity to time split: covariance estimates for Solar PV and offshore wind.",
+  label = "tab:sens_all"
+)
+
+tbl_all
+
+
 
 cov2cor(SigS)
 cov2cor(SigZ)
@@ -261,13 +339,12 @@ SRS <- function(w, season, sigmaZ){
   ggplot(aes(x=date, y = totalCF, color = covariance)) + 
   geom_line()+
   facet_wrap(~covariance, ncol = 1) +
-  # Solar weight / SRS / Var annotations moved to Table tab:case2results in the paper:
-  # geom_text(data= weights %>% filter(locID == "Solar PV"),
-  #           aes(x = as.Date("2017-01-01"), y = Inf,
-  #               label = paste0("Solar weight: ", round(100*weights,1),"%    ",
-  #               "SRS: ",round(sapply(weights,SRS, season= SigS,sigmaZ= SigZ),3),
-  #               "    Var: ", round(sapply(weights, SD, sigma = Sig),3))),
-  #           vjust = 1.5, hjust=.5)+
+  geom_text(data= weights %>% filter(locID == "Solar PV"),
+            aes(x = as.Date("2017-01-01"), y = Inf, 
+                label = paste0("Solar weight: ", round(100*weights,1),"%    ",
+                "SRS: ",round(sapply(weights,SRS, season= SigS,sigmaZ= SigZ),3),
+                "    Var: ", round(sapply(weights, SD, sigma = Sig),3))),
+            vjust = 1.5, hjust=.5)+
   scale_x_date(expand = c(0,0), date_breaks = "1 year", date_labels = "%Y")+
   scale_y_continuous(name = "Portfolio capacity factor", limits = c(0.09,.58), breaks = seq(.1,.6,.1))+
   theme(axis.title.x = element_blank(),
