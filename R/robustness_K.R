@@ -124,7 +124,6 @@ print(res2 %>%
         transmute(K, strategy, solar_prop = round(100 * solar_prop, 1)) %>%
         pivot_wider(names_from = strategy, values_from = solar_prop) %>%
         as.data.frame(), row.names = FALSE)
-
 cat("\n-- Seasonal Risk Score by K and strategy --\n")
 print(res2 %>%
         transmute(K, strategy, SRS = round(SRS, 3)) %>%
@@ -141,7 +140,6 @@ cat("\n-- seasonal correlations with consumption by K --\n")
 print(res2 %>% distinct(K, rho_cons_solar_season, rho_cons_wind_season) %>%
         mutate(across(starts_with("rho"), ~round(., 2))) %>% as.data.frame(),
       row.names = FALSE)
-
 write_csv(res2, "output/robustness_K_case2.csv")
 
 # =====================================================================

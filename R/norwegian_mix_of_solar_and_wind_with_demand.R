@@ -324,7 +324,7 @@ wind <-   readRDS("data/NVE.rds") %>%
                        breaks = c(seq(0,5,.5), more_than_30gw$p_target[1:3]),
                        labels = scales::percent,
                        name = expression(p[target]))+
-    scale_y_continuous(name = "Solar PV proportion",
+    scale_y_continuous(name = "Solar share (%)",
                        labels = scales::percent,
                        breaks = c(seq(0,1,.25), 1-more_than_30gw$mix[c(1,3)]),
                        limits = c(-0.01,1.0), expand = c(0,0))+
